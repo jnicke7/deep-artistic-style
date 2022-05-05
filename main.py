@@ -14,6 +14,8 @@ from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.preprocessing.image import array_to_img
 from tensorflow.keras.utils import Progbar
 
+tf.enable_eager_execution()
+
 def init_model(layers):
 	full_model = keras.applications.VGG19(include_top=False, weights='imagenet', pooling='avg')
 	full_model.trainable = False
@@ -31,7 +33,7 @@ def gram(input_tensor):
 	gram_matrix = tf.einsum('buvi,buvj->bij', input_tensor, input_tensor)
 	# Now divide this result by the total number of elements in each feature map
 	num_elems = input_tensor.shape[1]*input_tensor.shape[2]*input_tensor.shape[3]
-	return gram_matrix / (2.0 * num_elems)
+	return gram_matrix / (2.0 * tf.cast(num_elems,tf.float32))
 
 def compute_loss(content_input, style_input, content_target, style_target):
 	assert len(style_input) == len(style_target)
@@ -40,12 +42,12 @@ def compute_loss(content_input, style_input, content_target, style_target):
 	for i in range(len(style_input)):
 		style_loss += 1/5*tf.math.reduce_sum(tf.math.square(style_input[i] - style_target[i]))
 	# Weightings for content and style loss
-	alpha = 1
-	beta = 1e-3
+	alpha = 1e-3
+	beta = 1
 	return content_loss*alpha + style_loss*beta
 
 
-content_img = (img_to_array(load_img('inputs/lake.jpg')) * 1.0)[np.newaxis, :]
+content_img = (img_to_array(load_img('inputs/turtle.jpg')) * 1.0)[np.newaxis, :]
 content_img = keras.applications.vgg19.preprocess_input(content_img)
 
 style_img = (img_to_array(load_img('inputs/starry_night.jpg')) * 1.0)[np.newaxis, :]
@@ -82,7 +84,7 @@ def gradient_descent_step(img_var):
 	optimizer.apply_gradients([(gradient, img_var)])
 	img_var.assign(tf.clip_by_value(img_var, clip_value_min=0.0, clip_value_max = 255.0))
 
-n_iter = 5
+n_iter = 100
 pbar = Progbar(n_iter)
 for i in range(n_iter):
 	gradient_descent_step(result_var)
