@@ -14,7 +14,7 @@ from tensorflow.keras.preprocessing.image import img_to_array
 from tensorflow.keras.preprocessing.image import array_to_img
 from tensorflow.keras.utils import Progbar
 
-tf.enable_eager_execution()
+#tf.enable_eager_execution()
 
 def init_model(layers):
 	full_model = keras.applications.VGG19(include_top=False, weights='imagenet', pooling='avg')
@@ -44,10 +44,10 @@ def compute_loss(content_input, style_input, content_target, style_target):
 	# Weightings for content and style loss
 	alpha = 1e-3
 	beta = 1
-	return content_loss*alpha + style_loss*beta
+	return content_loss*alpha + style_loss*beta, content_loss, style_loss
 
 
-content_img = (img_to_array(load_img('inputs/turtle.jpg')) * 1.0)[np.newaxis, :]
+content_img = (img_to_array(load_img('inputs/house.jpg')) * 1.0)[np.newaxis, :]
 content_img = keras.applications.vgg19.preprocess_input(content_img)
 
 style_img = (img_to_array(load_img('inputs/starry_night.jpg')) * 1.0)[np.newaxis, :]
@@ -73,22 +73,23 @@ for i in range(len(style_target)):
 
 result_var = tf.Variable(content_img)
 
-optimizer = keras.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
+optimizer = keras.optimizers.Adam(learning_rate=0.05, beta_1=0.99, epsilon=1e-1)
 
 def gradient_descent_step(img_var):
 	with tf.GradientTape() as tape:
 		content_output = content_model(img_var)
 		style_output = [gram(i) for i in style_model(img_var)]
-		loss = compute_loss(content_output, style_output, content_target, style_target)
+		loss, content_loss, style_loss = compute_loss(content_output, style_output, content_target, style_target)
 	gradient = tape.gradient(loss, img_var)
 	optimizer.apply_gradients([(gradient, img_var)])
 	img_var.assign(tf.clip_by_value(img_var, clip_value_min=0.0, clip_value_max = 255.0))
+	return content_loss, style_loss
 
-n_iter = 100
-pbar = Progbar(n_iter)
+n_iter = 1000
+pbar = Progbar(n_iter, stateful_metrics=["content_loss", "style_loss"])
 for i in range(n_iter):
-	gradient_descent_step(result_var)
-	pbar.update(i+1)
+	content_loss, style_loss = gradient_descent_step(result_var)
+	pbar.update(i+1, values=[("content_loss", content_loss), ("style_loss", style_loss)])
 
 save_img('outputs/output.jpg', array_to_img(result_var.numpy()[0][:, :, [2, 1, 0]]))
 
