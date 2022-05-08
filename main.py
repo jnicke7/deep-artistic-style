@@ -8,10 +8,10 @@ warnings.filterwarnings('ignore',category=FutureWarning)
 import tensorflow as tf
 from tensorflow import keras
 import numpy as np
-from tensorflow.keras.preprocessing.image import load_img
-from tensorflow.keras.preprocessing.image import save_img
-from tensorflow.keras.preprocessing.image import img_to_array
-from tensorflow.keras.preprocessing.image import array_to_img
+from keras.preprocessing.image import load_img
+from keras.preprocessing.image import save_img
+from keras.preprocessing.image import img_to_array
+from keras.preprocessing.image import array_to_img
 from tensorflow.keras.utils import Progbar
 
 #tf.enable_eager_execution()
@@ -47,10 +47,10 @@ def compute_loss(content_input, style_input, content_target, style_target):
 	return content_loss*alpha + style_loss*beta, content_loss, style_loss
 
 
-content_img = (img_to_array(load_img('inputs/house.jpg')) * 1.0)[np.newaxis, :]
+content_img = (img_to_array(load_img('inputs/cabin.jpg')) * 1.0)[np.newaxis, :]
 content_img = keras.applications.vgg19.preprocess_input(content_img)
 
-style_img = (img_to_array(load_img('inputs/starry_night.jpg')) * 1.0)[np.newaxis, :]
+style_img = (img_to_array(load_img('inputs/house.jpg')) * 1.0)[np.newaxis, :]
 style_img = keras.applications.vgg19.preprocess_input(style_img)
 # The layer that contains the "content" understanding of the input images
 content_layers = ["block5_conv2"] 
@@ -73,7 +73,7 @@ for i in range(len(style_target)):
 
 result_var = tf.Variable(content_img)
 
-optimizer = keras.optimizers.Adam(learning_rate=0.05, beta_1=0.99, epsilon=1e-1)
+optimizer = keras.optimizers.Adam(learning_rate=0.09, beta_1=0.99, epsilon=1e-1)
 
 def gradient_descent_step(img_var):
 	with tf.GradientTape() as tape:
@@ -85,7 +85,7 @@ def gradient_descent_step(img_var):
 	img_var.assign(tf.clip_by_value(img_var, clip_value_min=0.0, clip_value_max = 255.0))
 	return content_loss, style_loss
 
-n_iter = 1000
+n_iter = 1500
 pbar = Progbar(n_iter, stateful_metrics=["content_loss", "style_loss"])
 for i in range(n_iter):
 	content_loss, style_loss = gradient_descent_step(result_var)
